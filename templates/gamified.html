@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamified Learning</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .gamified-container { max-width: 900px; margin: 50px auto; padding: 20px; background: #222; border-radius: 10px; }
+        .selection-section, .quiz-section, .leaderboard-section { margin-top: 20px; background: #2c2f38; padding: 15px; border-radius: 8px; }
+        .question { margin: 10px 0; }
+        .input-group, .selection-group { display: flex; gap: 10px; margin-top: 10px; }
+        .button, select { background: #42f5b3; padding: 10px; border: none; border-radius: 8px; cursor: pointer; color: black; }
+        .button:hover, select:hover { background: #2db18e; }
+        .leaderboard-list { padding: 10px; }
+        .leaderboard-item { margin: 5px 0; font-size: 16px; }
+        .leaderboard-item:nth-child(1) { color: #ffd700; }
+        .leaderboard-item:nth-child(2) { color: #c0c0c0; }
+        .leaderboard-item:nth-child(3) { color: #cd7f32; }
+        .score-display { margin-top: 10px; font-size: 18px; color: #42f5b3; }
+        .quiz-section { max-height: 600px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo"><a href="/">OLabs Collab</a></div>
+    </header>
+
+    <div class="gamified-container">
+        <h2>Gamified Learning</h2>
+        <div class="selection-section">
+            <div class="input-group">
+                <input id="username" placeholder="Enter your username..." />
+                <button class="button" onclick="setUsername()">Join the Game</button>
+            </div>
+            <div class="selection-group" id="selection-group" style="display: none;">
+                <select id="class-select">
+                    <option value="">Select Class</option>
+                    <option value="Class 6">Class 6</option>
+                    <option value="Class 7">Class 7</option>
+                    <option value="Class 8">Class 8</option>
+                    <option value="Class 9">Class 9</option>
+                    <option value="Class 10">Class 10</option>
+                </select>
+                <select id="subject-select">
+                    <option value="">Select Subject</option>
+                    <option value="physics">Physics</option>
+                    <option value="chemistry">Chemistry</option>
+                    <option value="biology">Biology</option>
+                    <option value="math">Mathematics</option>
+                </select>
+                <button class="button" onclick="loadQuiz()">Start Quiz</button>
+            </div>
+        </div>
+        <div class="quiz-section" id="quiz-section">
+            <p>Set your username and select class/subject to start!</p>
+        </div>
+        <div class="leaderboard-section">
+            <h3>Leaderboard</h3>
+            <p id="leaderboard-context">Select class and subject to view leaderboard</p>
+            <div class="leaderboard-list" id="leaderboard"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        let username = null;
+        let currentClass = null;
+        let currentSubject = null;
+        let currentQuestions = [];
+
+        // Set Username
+        function setUsername() {
+            const input = document.getElementById("username");
+            username = input.value.trim();
+            if (!username) {
+                alert("Please enter a username to join the game!");
+                return;
+            }
+            input.disabled = true;
+            document.querySelector(".button[onclick='setUsername()']").disabled = true;
+            document.getElementById("selection-group").style.display = "flex";
+            console.log("Username set:", username);
+        }
+
+        // Load Quiz
+        function loadQuiz() {
+            currentClass = document.getElementById("class-select").value;
+            currentSubject = document.getElementById("subject-select").value;
+            console.log("Selected Class:", currentClass, "Subject:", currentSubject);
+            if (!currentClass || !currentSubject) {
+                alert("Please select both class and subject!");
+                return;
+            }
+            const room = `${currentClass}_${currentSubject}`;
+            socket.emit("join_room", { "room": room });
+            fetchQuiz();
+            fetchLeaderboard();
+        }
+
+        function fetchQuiz() {
+            console.log("Fetching quiz for:", currentClass, currentSubject);
+            fetch("/api/gamified/questions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ class: currentClass, subject: currentSubject, username })
+            })
+            .then(res => {
+                console.log("Fetch response status:", res.status);
+                if (!res.ok) throw new Error("Fetch failed");
+                return res.json();
+            })
+            .then(data => {
+                console.log("Fetched questions:", data.questions);
+                currentQuestions = data.questions || [];
+                displayQuiz(data.questions);
+            })
+            .catch(err => {
+                console.error("Error fetching quiz:", err);
+                alert("Failed to load quiz. Check console for details!");
+            });
+        }
+
+        function displayQuiz(questions) {
+            const section = document.getElementById("quiz-section");
+            if (!Array.isArray(questions) || questions.length === 0) {
+                section.innerHTML = "<p>No quiz available for this selection yet!</p>";
+                return;
+            }
+            section.innerHTML = `<h3>Quiz for ${currentClass} - ${currentSubject}</h3>` + questions.map(q => `
+                <div class="question">
+                    <p>${q.question}</p>
+                    ${q.options.map(opt => `
+                        <input type="radio" name="q${q.id}" value="${opt}" id="q${q.id}_${opt}">
+                        <label for="q${q.id}_${opt}">${opt}</label><br>
+                    `).join("")}
+                </div>
+            `).join("") + `
+                <button class="button" onclick="submitQuiz()">Submit Quiz</button>
+            `;
+        }
+
+        function submitQuiz() {
+            if (!username || !currentClass || !currentSubject) {
+                alert("Please set your username and select class/subject!");
+                return;
+            }
+            const answers = {};
+            document.querySelectorAll("input[type='radio']:checked").forEach(input => {
+                const qId = input.name.replace("q", "");
+                answers[qId] = input.value;
+            });
+            if (Object.keys(answers).length === 0) {
+                alert("Please answer at least one question!");
+                return;
+            }
+            console.log("Submitting answers:", answers);
+            fetch("/api/gamified/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, class: currentClass, subject: currentSubject, answers, questions: currentQuestions })
+            })
+            .then(res => {
+                console.log("Submit response status:", res.status);
+                if (!res.ok) throw new Error("Submit failed");
+                return res.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    displayScore(data.score, data.total);
+                }
+            })
+            .catch(err => {
+                console.error("Error submitting quiz:", err);
+                alert("Failed to submit quiz. Check console for details!");
+            });
+        }
+
+        function displayScore(score, total) {
+            const section = document.getElementById("quiz-section");
+            section.innerHTML = `
+                <h3>Quiz Completed!</h3>
+                <p class="score-display">Your Final Score: ${score}/${total} points</p>
+                <button class="button" onclick="loadQuiz()">Play Again</button>
+            `;
+            fetchLeaderboard();
+        }
+
+        // Fetch and Display Leaderboard
+        function fetchLeaderboard() {
+            if (!currentClass || !currentSubject) return;
+            fetch("/api/gamified/leaderboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ class: currentClass, subject: currentSubject })
+            })
+            .then(res => res.json())
+            .then(data => updateLeaderboard(data.leaderboard))
+            .catch(err => console.error("Error fetching leaderboard:", err));
+        }
+
+        function updateLeaderboard(lb) {
+            const leaderboardDiv = document.getElementById("leaderboard");
+            const context = document.getElementById("leaderboard-context");
+            context.textContent = `Leaderboard for ${currentClass} - ${currentSubject}`;
+            const sorted = Object.entries(lb).sort((a, b) => b[1].score - a[1].score);
+            leaderboardDiv.innerHTML = sorted.length ? sorted.map(([user, stats], index) => `
+                <div class="leaderboard-item">
+                    ${index + 1}. ${user}: ${stats.score} points (Last updated: ${new Date(stats.last_updated).toLocaleString()})
+                </div>
+            `).join("") : "<p>No scores yet. Be the first!</p>";
+        }
+
+        // Real-time Updates
+        socket.on("leaderboard_updated", (data) => {
+            if (currentClass && currentSubject && `${currentClass}_${currentSubject}` === data.room) {
+                updateLeaderboard(data.leaderboard);
+            }
+        });
+    </script>
+</body>
+</html>

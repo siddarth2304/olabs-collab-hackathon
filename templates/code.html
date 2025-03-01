@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor - OLabs Collab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/show-hint.min.css" />
+    <style>
+        .code-container {
+            max-width: 100%;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e; /* VS Code dark theme */
+            display: flex;
+            flex-direction: column;
+            font-family: 'Fira Code', monospace;
+        }
+        .toolbar {
+            background: #252526;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .editor-header {
+            background: #252526;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #00e6b8;
+            border-bottom: 1px solid #444;
+        }
+        .CodeMirror {
+            height: calc(100vh - 200px);
+            font-size: 16px;
+            background: #1e1e1e;
+            border: none;
+            padding: 10px;
+            transition: background 0.3s ease, color 0.3s ease;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .output-box {
+            background: #252526;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            color: #d4d4d4;
+            font-family: 'Fira Code', monospace;
+            white-space: pre-wrap;
+            transition: height 0.3s ease;
+            border-top: 1px solid #444;
+        }
+        .output-box.collapsed {
+            height: 50px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 5px 10px;
+            background: #333;
+        }
+        .controls select, .controls button {
+            padding: 8px 15px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-size: 14px;
+        }
+        .controls button:hover {
+            background: #005fa3;
+        }
+        .error-line {
+            background: rgba(255, 0, 0, 0.2);
+        }
+        .status-bar {
+            background: #007acc;
+            padding: 5px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: white;
+        }
+        .voice-status {
+            margin-left: 10px;
+            font-size: 12px;
+            color: #ffcc00;
+        }
+        .test-cases {
+            margin-top: 10px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .test-cases h3 {
+            color: #00e6b8;
+            margin-bottom: 5px;
+        }
+        .test-cases div {
+            margin: 5px 0;
+            padding: 5px;
+            background: #2c2f38;
+            border-radius: 5px;
+        }
+        .high-contrast .code-container {
+            background: #000;
+        }
+        .high-contrast .CodeMirror {
+            background: #000;
+            color: #fff !important;
+        }
+        .high-contrast .output-box {
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="code-container">
+        <div class="toolbar">
+            <select id="language-select">
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="ruby">Ruby</option>
+            </select>
+            <button onclick="runCode()" aria-label="Run Code">Run</button>
+            <button onclick="clearCode()" aria-label="Clear Code">Clear</button>
+            <button onclick="startVoiceCoding()" aria-label="Start Voice Coding">Voice Code</button>
+            <button onclick="startVoiceChat()" aria-label="Start Voice Chat">Voice Chat</button>
+            <button onclick="startVideoChat()" aria-label="Start Video Chat">Video Chat</button>
+            <button onclick="toggleOutput()" aria-label="Toggle Output Panel">Output</button>
+            <button onclick="runTests()" aria-label="Run Tests">Run Tests</button>
+            <button onclick="toggleContrast()" aria-label="Toggle High Contrast">Contrast</button>
+            <button onclick="toggleDyslexiaFont()" aria-label="Toggle Dyslexia Font">Dyslexia Font</button>
+            <button onclick="adjustFontSize(1)" aria-label="Increase Font Size">+</button>
+            <button onclick="adjustFontSize(-1)" aria-label="Decrease Font Size">-</button>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="dracula">Dracula</option>
+                <option value="solarized-dark">Solarized Dark</option>
+                <option value="monokai">Monokai</option>
+            </select>
+            <span id="voice-status" aria-live="polite"></span>
+        </div>
+        <div class="editor-header">
+            <h2>Code Editor</h2>
+            <span id="username-display"></span>
+        </div>
+        <textarea id="code-editor"></textarea>
+        <div class="output-box" id="output-box"></div>
+        <div class="test-cases" id="test-cases">
+            <h3>Self-Evaluation Tests</h3>
+            <div id="test-results"></div>
+        </div>
+        <div class="status-bar">
+            <span>Ln: <span id="cursor-line">1</span>, Col: <span id="cursor-col">1</span></span>
+            <span id="status-message">Ready</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/ruby/ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/javascript-lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/eslint/8.57.0/eslint.min.js"></script>
+    <script>
+        const socket = io();
+        const room = "code-editor-room";
+        const userId = `Coder_${Math.random().toString(36).substr(2, 9)}`;
+        document.getElementById("username-display").textContent = `User: ${userId}`;
+        socket.emit("join_room", { "room": room, "user_id": userId });
+
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+            mode: "python",
+            theme: "dracula",
+            lineNumbers: true,
+            tabSize: 4,
+            lineWrapping: true,
+            lint: true,
+            gutters: ["CodeMirror-lint-markers"],
+            extraKeys: {
+                "Ctrl-Space": "autocomplete",
+                "Tab": function(cm) { cm.execCommand("indentMore"); },
+                "Shift-Tab": function(cm) { cm.execCommand("indentLess"); }
+            },
+            value: "print(\"Welcome to OLabs Code Editor!\")\n"
+        });
+
+        const outputBox = document.getElementById("output-box");
+        const languageSelect = document.getElementById("language-select");
+        const voiceStatus = document.getElementById("voice-status");
+        const testResults = document.getElementById("test-results");
+        let isDyslexiaFont = false;
+        let recognition;
+        let localStream, peerConnection;
+        let videoStream;
+
+        // Language Switch
+        languageSelect.addEventListener("change", () => {
+            const lang = languageSelect.value;
+            editor.setOption("mode", lang === "python" ? "python" : lang === "javascript" ? "javascript" : lang === "ruby" ? "ruby" : "text/x-java");
+            console.log(`Language set to: ${lang}`);
+        });
+
+        // Sync Code
+        editor.on("change", () => {
+            const code = editor.getValue();
+            socket.emit("update_code", { "room": room, "code": code, "user_id": userId });
+            lintCode(code);
+            // Custom autocomplete suggestions
+            const cursor = editor.getCursor();
+            const token = editor.getTokenAt(cursor);
+            if (token.string.match(/^[a-zA-Z]/)) {
+                editor.showHint({
+                    hint: customHint,
+                    completeSingle: false
+                });
+            }
+        });
+
+        // Cursor Position Updates
+        editor.on("cursorActivity", () => {
+            const cursor = editor.getCursor();
+            document.getElementById("cursor-line").textContent = cursor.line + 1;
+            document.getElementById("cursor-col").textContent = cursor.ch + 1;
+            socket.emit("update_cursor", { "room": room, "user_id": userId, "position": cursor });
+        });
+
+        socket.on("code_updated", (data) => {
+            if (data.user_id !== userId) editor.setValue(data.code);
+        });
+
+        socket.on("run_result", (data) => {
+            outputBox.innerHTML += `<p>${data.text} (by ${data.user_id})</p>`;
+            outputBox.scrollTop = outputBox.scrollHeight;
+            if (navigator.vibrate) navigator.vibrate(200); // Success haptic
+            speakOutput(data.text);
+        });
+
+        socket.on("cursor_update", (data) => {
+            console.log("Cursor updates:", data);
+        });
+
+        // Custom Autocomplete Suggestions
+        function customHint(cm) {
+            const cursor = cm.getCursor();
+            const token = cm.getTokenAt(cursor);
+            const prefix = token.string.toLowerCase();
+            const suggestions = [
+                "hello", "help", "function", "for", "if", "while", "print", "console", "log", "return",
+                "class", "public", "private", "static", "void", "int", "string", "def"
+            ].filter(s => s.toLowerCase().startsWith(prefix));
+            return {
+                list: suggestions,
+                from: CodeMirror.Pos(cursor.line, token.start),
+                to: CodeMirror.Pos(cursor.line, token.end)
+            };
+        }
+
+        // Run Code
+        async function runCode() {
+            const code = editor.getValue().trim();
+            if (!code) {
+                outputBox.innerHTML = "⚠️ No code.";
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("No code to run.");
+                return;
+            }
+            const language = languageSelect.value;
+            try {
+                const response = await fetch("/run_code", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code, language })
+                });
+                const result = await response.json();
+                outputBox.innerHTML = result.output || "No output.";
+                if (result.errors && result.errors.length) {
+                    outputBox.innerHTML += `<p style="color: #ff5555">Errors: ${result.errors.map(e => `${e.line}: ${e.message}`).join("<br>")}</p>`;
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                    speakOutput("Errors detected: " + result.errors[0].message);
+                }
+                socket.emit("run_code", { "room": room, "code": code, "language": language, "user_id": userId });
+                if (navigator.vibrate) navigator.vibrate(200);
+                speakOutput("Code executed successfully.");
+            } catch (error) {
+                outputBox.innerHTML = `⚠️ Error: ${error.message}`;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("Error executing code: " + error.message);
+            }
+        }
+
+        // Clear Code
+        function clearCode() {
+            editor.setValue("");
+            outputBox.innerHTML = "";
+            testResults.innerHTML = "";
+            socket.emit("update_code", { "room": room, "code": "", "user_id": userId });
+            if (navigator.vibrate) navigator.vibrate(100);
+            speakOutput("Editor cleared.");
+        }
+
+        // Toggle Contrast
+        function toggleContrast() {
+            document.body.classList.toggle("high-contrast");
+            if (navigator.vibrate) navigator.vibrate(50);
+            speakOutput("High contrast mode toggled.");
+        }
+
+        // Toggle Dyslexia Font
+        function toggleDyslexiaFont() {
+            isDyslexiaFont = !isDyslexiaFont;
+            editor.getWrapperElement().style.fontFamily = isDyslexiaFont ? "'OpenDyslexic', monospace" : "'Fira Code', monospace";
+            editor.refresh();
+            if (navigator.vibrate) navigator.vibrate(50);
+            speakOutput(isDyslexiaFont ? "Dyslexia font enabled." : "Dyslexia font disabled.");
+        }
+
+        // Adjust Font Size
+        function adjustFontSize(delta) {
+            const currentSize = parseInt(getComputedStyle(editor.getWrapperElement()).fontSize);
+            const newSize = currentSize + delta;
+            if (newSize >= 10 && newSize <= 30) {
+                editor.getWrapperElement().style.fontSize = `${newSize}px`;
+                editor.refresh();
+                if (navigator.vibrate) navigator.vibrate(50);
+                speakOutput(`Font size set to ${newSize} pixels.`);
+            }
+        }
+
+        // Change Theme
+        function changeTheme() {
+            const theme = document.getElementById("theme-select").value;
+            editor.setOption("theme", theme);
+            speakOutput(`Theme changed to ${theme}.`);
+        }
+
+        // Voice Coding
+        function startVoiceCoding() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Voice coding not supported in this browser.");
+                return;
+            }
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
+            voiceStatus.textContent = "Listening...";
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+                voiceStatus.textContent = "";
+                processVoiceCommand(transcript);
+                if (navigator.vibrate) navigator.vibrate(100);
+            };
+            recognition.onerror = () => {
+                voiceStatus.textContent = "Voice error.";
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("Voice recognition error.");
+            };
+            recognition.onend = () => {
+                voiceStatus.textContent = "";
+                speakOutput("Voice recognition stopped.");
+            };
+            recognition.start();
+            setTimeout(() => recognition.stop(), 60000); // Auto-stop after 60s
+        }
+
+        // Process Voice Commands
+        function processVoiceCommand(command) {
+            console.log("Voice command:", command);
+            const code = editor.getValue();
+            let newCode = code;
+            let actionTaken = false;
+
+            // Natural Language Commands
+            if (command.includes("insert")) {
+                if (command.includes("function")) {
+                    const funcName = command.match(/function (\w+)/)?.[1] || "myFunction";
+                    newCode += `\nfunction ${funcName}() {\n    \n}`;
+                    actionTaken = true;
+                } else if (command.includes("if statement")) {
+                    newCode += `\nif (true) {\n    \n}`;
+                    actionTaken = true;
+                } else if (command.includes("loop")) {
+                    newCode += `\nfor (let i = 0; i < 10; i++) {\n    \n}`;
+                    actionTaken = true;
+                }
+            } else if (command.includes("run")) {
+                runCode();
+                actionTaken = true;
+            } else if (command.includes("clear")) {
+                clearCode();
+                actionTaken = true;
+            } else if (command.includes("delete line")) {
+                const lineMatch = command.match(/line (\d+)/);
+                if (lineMatch) {
+                    const lineNum = parseInt(lineMatch[1]) - 1;
+                    editor.replaceRange("", { line: lineNum, ch: 0 }, { line: lineNum + 1, ch: 0 });
+                    actionTaken = true;
+                }
+            } else if (command.includes("fix error")) {
+                lintCode(code);
+                actionTaken = true;
+            } else {
+                // Direct code insertion
+                newCode += command + "\n";
+                actionTaken = true;
+            }
+
+            if (actionTaken) {
+                editor.setValue(newCode);
+                speakOutput("Command executed: " + command);
+            } else {
+                speakOutput("Command not recognized.");
+            }
+        }
+
+        // Text-to-Speech for Output
+        function speakOutput(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "en-US";
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // WebRTC Voice Chat
+        async function startVoiceChat() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                voiceStatus.textContent = "Voice chat active";
+                peerConnection = new RTCPeerConnection();
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit("ice-candidate", { room, candidate: event.candidate, user_id: userId });
+                    }
+                };
+
+                peerConnection.ontrack = (event) => {
+                    const remoteAudio = new Audio();
+                    remoteAudio.srcObject = event.streams[0];
+                    remoteAudio.play();
+                    speakOutput("Voice chat connected.");
+                };
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                socket.emit("offer", { room, offer, user_id: userId });
+            } catch (error) {
+                voiceStatus.textContent = "Voice chat error";
+                console.error(error);
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("Voice chat error.");
+            }
+        }
+
+        // WebRTC Video Chat (Mocked for Now)
+        async function startVideoChat() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                voiceStatus.textContent = "Video chat active";
+                // Mock for now - Integrate WebRTC video stream in Phase 2
+                speakOutput("Video chat started.");
+            } catch (error) {
+                voiceStatus.textContent = "Video chat error";
+                console.error(error);
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("Video chat error.");
+            }
+        }
+
+        socket.on("offer", async (data) => {
+            if (!peerConnection) startVoiceChat();
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit("answer", { room, answer, user_id: userId });
+        });
+
+        socket.on("answer", async (data) => {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        });
+
+        socket.on("ice-candidate", async (data) => {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            } catch (error) {
+                console.error("Error adding ICE candidate:", error);
+            }
+        });
+
+        // Toggle Output Panel
+        function toggleOutput() {
+            outputBox.classList.toggle("collapsed");
+            if (navigator.vibrate) navigator.vibrate(50);
+            speakOutput("Output panel toggled.");
+        }
+
+        // Basic Linting (JS for now)
+        function lintCode(code) {
+            if (languageSelect.value === "javascript") {
+                const eslint = new ESLint({ overrideConfig: { rules: { "semi": "error", "no-undef": "error" } } });
+                eslint.lintText(code).then(results => {
+                    const errors = results[0].messages;
+                    editor.operation(() => {
+                        editor.clearGutter("CodeMirror-lint-markers");
+                        errors.forEach(err => {
+                            editor.markText(
+                                { line: err.line - 1, ch: err.column - 1 },
+                                { line: err.line - 1, ch: err.endColumn - 1 },
+                                { className: "error-line" }
+                            );
+                            editor.setGutterMarker(err.line - 1, "CodeMirror-lint-markers", makeMarker(err.message));
+                        });
+                    });
+                    outputBox.innerHTML += errors.length ? `<p style="color: #ff5555">Errors: ${errors.map(e => `${e.line}:${e.column} - ${e.message}`).join("<br>")}</p>` : "";
+                    if (errors.length && navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                    if (errors.length) speakOutput("Errors detected: " + errors[0].message);
+                });
+            }
+        }
+
+        function makeMarker(msg) {
+            const marker = document.createElement("div");
+            marker.style.color = "#ff5555";
+            marker.innerHTML = "●";
+            marker.title = msg;
+            return marker;
+        }
+
+        // Self-Evaluation Tests (Mock for Demo)
+        function runTests() {
+            const code = editor.getValue().trim();
+            if (!code) {
+                testResults.innerHTML = "⚠️ No code.";
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                speakOutput("No code to test.");
+                return;
+            }
+            testResults.innerHTML = "Running tests...\n";
+            fetch("/api/run_tests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code, language: languageSelect.value })
+            })
+            .then(res => res.json())
+            .then(data => {
+                testResults.innerHTML = data.results.map(r => `
+                    <p style="color: ${r.passed ? '#00ff00' : '#ff5555'}">
+                        ${r.passed ? '✅' : '❌'} ${r.description}: ${r.output} (Expected: ${r.expected})
+                    </p>`).join("");
+                if (navigator.vibrate) navigator.vibrate(data.results.every(r => r.passed) ? 200 : [100, 50, 100]);
+                speakOutput(data.results.every(r => r.passed) ? "All tests passed." : "Some tests failed.");
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Lab Advisor - OLabs Collab</title>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(to right, #121212, #1e1e1e);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #222;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        textarea, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        button {
+            background: #42f5b3;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2db18e;
+        }
+
+        pre {
+            background: #2c2f38;
+            padding: 10px;
+            border-radius: 8px;
+            color: #42f5b3;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🔬 AI-Powered Lab Advisor</h1>
+
+        <h2>🌍 Select Language</h2>
+        <select id="language">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+            <option value="ta">Tamil</option>
+            <option value="te">Telugu</option>
+        </select>
+
+        <h2>🧪 Experiment Assistance</h2>
+        <textarea id="experiment_topic" placeholder="Enter experiment topic..."></textarea>
+        <button onclick="getLabAdvice()">💡 Get AI Assistance</button>
+        <pre id="advisor_output"></pre>
+
+        <h2>📄 AI-Powered Lab Report</h2>
+        <textarea id="experiment_data" placeholder="Describe your experiment..."></textarea>
+        <button onclick="generateLabReport()">📊 Generate Lab Report</button>
+        <button onclick="downloadLabReport()">📥 Download PDF</button>
+        <button onclick="convertTextToSpeech()">🔊 Listen to Report</button>
+        <pre id="lab_report_output"></pre>
+    </div>
+
+   <script>
+    async function getLabAdvice() {
+        let experimentTopic = document.getElementById("experiment_topic").value.trim();
+        let language = document.getElementById("language").value;
+
+        if (!experimentTopic) {
+            alert("⚠️ Please enter an experiment topic.");
+            return;
+        }
+
+        try {
+            let response = await fetch("/api/lab_advisor", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ topic: experimentTopic, student_data: {}, language: language })
+            });
+
+            if (!response.ok) throw new Error("Server error");
+
+            let data = await response.json();
+            document.getElementById("advisor_output").innerText = data.reply;
+        } catch (error) {
+            document.getElementById("advisor_output").innerText = "⚠️ AI Lab Advisor is not responding. Please try again.";
+        }
+    }
+
+    async function generateLabReport() {
+        let experimentData = document.getElementById("experiment_data").value.trim();
+        let language = document.getElementById("language").value;
+
+        if (!experimentData) {
+            alert("⚠️ Please enter experiment details.");
+            return;
+        }
+
+        try {
+            let response = await fetch("/api/lab_report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ experiment_data: experimentData, language: language })
+            });
+
+            if (!response.ok) throw new Error("Server error");
+
+            let data = await response.json();
+            document.getElementById("lab_report_output").innerText = data.report;
+        } catch (error) {
+            document.getElementById("lab_report_output").innerText = "⚠️ Failed to generate lab report.";
+        }
+    }
+
+    async function downloadLabReport() {
+        let reportText = document.getElementById("lab_report_output").innerText;
+
+        if (!reportText) {
+            alert("⚠️ No lab report available to download.");
+            return;
+        }
+
+        try {
+            let response = await fetch("/api/download_lab_report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ report: reportText })
+            });
+
+            if (!response.ok) throw new Error("Server error");
+
+            let blob = await response.blob();
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "AI_Lab_Report.pdf";
+            link.click();
+        } catch (error) {
+            alert("⚠️ Failed to download PDF.");
+        }
+    }
+
+    async function convertTextToSpeech() {
+        let reportText = document.getElementById("lab_report_output").innerText;
+
+        if (!reportText) {
+            alert("⚠️ No text available for speech.");
+            return;
+        }
+
+        try {
+            let response = await fetch("/api/text_to_speech", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: reportText })
+            });
+
+            if (!response.ok) throw new Error("Server error");
+
+            let blob = await response.blob();
+            let audio = new Audio(URL.createObjectURL(blob));
+            audio.play();
+        } catch (error) {
+            alert("⚠️ Text-to-Speech is not working.");
+        }
+    }
+</script>
+
+
+</body>
+</html>
+

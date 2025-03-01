@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLabs Collab - {{ subject }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+    /* Container */
+    .collab-container {
+        max-width: 1100px; /* Slightly wider for a spacious feel */
+        margin: 100px auto; /* More top margin to push it down from navbar */
+        padding: 30px; /* Increased padding for breathing room */
+        background: linear-gradient(135deg, #1e2a44, #2c2f38); /* Subtle gradient */
+        border-radius: 16px; /* Softer, modern corners */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Deeper shadow for depth */
+        transition: transform 0.3s ease; /* Smooth hover effect */
+    }
+    .collab-container:hover {
+        transform: translateY(-5px); /* Slight lift on hover */
+    }
+
+    /* Header */
+    h2 {
+        font-size: 28px; /* Larger, bolder header */
+        color: #00e6b8; /* Vibrant accent color */
+        margin-bottom: 20px;
+        text-shadow: 1px 1px 3px rgba(0, 230, 184, 0.3); /* Subtle glow */
+    }
+
+    /* Chatbox */
+    .chatbox {
+        height: 450px; /* Taller for more visibility */
+        overflow-y: auto;
+        background: #2c2f38;
+        padding: 20px; /* More padding for comfort */
+        border-radius: 12px; /* Softer corners */
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2); /* Inner depth */
+        scrollbar-width: thin; /* Slim scrollbar */
+        scrollbar-color: #42f5b3 #2c2f38; /* Custom scrollbar */
+    }
+    .chatbox .message {
+        margin: 10px 0; /* More spacing between messages */
+        padding: 12px 16px; /* Larger padding for readability */
+        border-radius: 8px; /* Softer edges */
+        max-width: 85%; /* Slightly wider messages */
+        white-space: pre-wrap;
+        font-size: 15px; /* Readable text */
+        transition: background 0.2s ease; /* Smooth hover effect */
+    }
+    .chatbox .message:hover {
+        filter: brightness(1.1); /* Subtle highlight on hover */
+    }
+    .chatbox .student {
+        background: rgba(66, 245, 179, 0.3); /* Slightly more opaque */
+        align-self: flex-end;
+        margin-left: auto;
+        box-shadow: 0 2px 5px rgba(66, 245, 179, 0.2); /* Soft glow */
+    }
+    .chatbox .ai {
+        background: rgba(0, 153, 255, 0.3);
+        align-self: flex-start;
+        box-shadow: 0 2px 5px rgba(0, 153, 255, 0.2);
+    }
+    .chatbox .system {
+        color: #ffcc00;
+        text-align: center;
+        font-style: italic;
+        padding: 8px 0;
+    }
+    .chatbox .private {
+        background: rgba(153, 0, 255, 0.3);
+        align-self: flex-end;
+        font-style: italic;
+        box-shadow: 0 2px 5px rgba(153, 0, 255, 0.2);
+    }
+    .chatbox {
+        display: flex;
+        flex-direction: column;
+        gap: 5px; /* Consistent spacing */
+    }
+
+    /* Whiteboard */
+    .whiteboard {
+        border: 3px solid #42f5b3; /* Thicker, vibrant border */
+        margin-top: 20px; /* More spacing */
+        border-radius: 8px; /* Rounded edges */
+        box-shadow: 0 0 15px rgba(66, 245, 179, 0.3); /* Glow effect */
+        background: #fff; /* White canvas for clarity */
+    }
+
+    /* Input Group */
+    .input-group {
+        display: flex;
+        gap: 15px; /* Wider gaps for clarity */
+        margin-top: 20px; /* More spacing */
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .input-group input {
+        flex: 1;
+        padding: 12px 16px; /* Larger padding */
+        background: #3e3e3e;
+        color: #fff;
+        border: none;
+        border-radius: 25px; /* Pill-shaped */
+        font-size: 16px;
+        outline: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: box-shadow 0.3s ease;
+    }
+    .input-group input:focus {
+        box-shadow: 0 0 10px rgba(66, 245, 179, 0.5); /* Focus glow */
+    }
+    .input-group button {
+        padding: 12px 20px; /* Larger buttons */
+        background: #7b61ff; /* Vibrant purple */
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    .input-group button:hover {
+        background: #00e6b8; /* Switch to teal on hover */
+        transform: translateY(-2px); /* Slight lift */
+    }
+
+    /* High Contrast Mode */
+    .high-contrast {
+        background: #000;
+        color: #fff;
+    }
+    .high-contrast .collab-container {
+        background: #111;
+    }
+    .high-contrast .chatbox {
+        background: #333;
+    }
+    .high-contrast .whiteboard {
+        border-color: #ffcc00;
+    }
+
+    /* Peer Result */
+    #peer-result {
+        margin-top: 20px;
+    }
+    #peer-result select {
+        padding: 10px; /* Larger padding */
+        background: #3e3e3e;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        cursor: pointer;
+    }
+    #peer-result button {
+        padding: 10px 20px; /* Larger button */
+        background: #42f5b3;
+        border-radius: 8px;
+        margin-left: 15px;
+        transition: background 0.3s ease;
+    }
+    #peer-result button:hover {
+        background: #00e6b8;
+    }
+
+    /* User Info */
+    .user-info {
+        font-size: 18px; /* Slightly larger */
+        color: #b0b8c4;
+        margin-left: 15px;
+        background: rgba(66, 245, 179, 0.1); /* Subtle background */
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+</style>
+</head>
+<body>
+    <header>
+        <div class="logo"><a href="/">OLabs Collab</a></div>
+    </header>
+
+    <div class="collab-container">
+        <h2>Collaborate on {{ subject }} <span id="user-count"></span> <span class="user-info" id="username-display"></span></h2>
+        <div class="chatbox" id="chatbox">
+            <div class="message system">Welcome to the {{ subject }} study room!</div>
+            <div class="message system">Tip: Use @username for private messages!</div>
+        </div>
+        <div class="input-group">
+            <input id="message" placeholder="Type here or @username for private..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="toggleContrast()">Contrast</button>
+        </div>
+        <canvas id="whiteboard" class="whiteboard" width="600" height="200"></canvas>
+        <div class="input-group">
+            <button onclick="changeColor('#000000')">Black</button>
+            <button onclick="changeColor('#ff0000')">Red</button>
+            <button onclick="erase()">Erase</button>
+            <button onclick="clearBoard()">Clear</button>
+        </div>
+        <div class="input-group">
+            <input id="topic" placeholder="Enter topic (e.g., kinematics)">
+            <button onclick="matchPeers()">Find Peer</button>
+        </div>
+        <div id="peer-result"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const room = "{{ subject }}";
+        const userId = "{{ subject }}_User_" + Math.floor(Math.random() * 1000); // Unique username per subject
+        document.getElementById("username-display").textContent = `You: ${userId}`; // Display current user's name
+
+        socket.emit("join_room", { "room": room, "user_id": userId });
+
+        socket.on("message", (data) => {
+            const chatbox = document.getElementById("chatbox");
+            const cls = data.type === "ai" ? "ai" : data.type === "system" ? "system" : data.type === "private" ? "private" : "student";
+            const showMessage = data.type !== "private" || (data.from === userId || data.to === userId);
+            if (showMessage) {
+                chatbox.innerHTML += `<div class="message ${cls}">${data.text}</div>`;
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }
+        });
+
+        socket.on("user_count", (data) => {
+            document.getElementById("user-count").textContent = `(${data.count} users)`;
+        });
+
+        function sendMessage() {
+            const msg = document.getElementById("message").value.trim();
+            if (!msg) return;
+            socket.emit("group_message", { "room": room, "text": msg, "user_id": userId });
+            document.getElementById("message").value = "";
+        }
+
+        const canvas = document.getElementById("whiteboard");
+        const ctx = canvas.getContext("2d");
+        let drawing = false, erasing = false, color = "#000000";
+        ctx.lineWidth = 2;
+
+        canvas.onmousedown = (e) => {
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        };
+        canvas.onmouseup = () => drawing = false;
+        canvas.onmousemove = (e) => {
+            if (drawing) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                ctx.strokeStyle = erasing ? "#ffffff" : color;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                socket.emit("draw", { "room": room, "x": x, "y": y, "color": ctx.strokeStyle });
+            }
+        };
+        socket.on("draw", (data) => {
+            ctx.strokeStyle = data.color;
+            ctx.lineTo(data.x, data.y);
+            ctx.stroke();
+        });
+        socket.on("clear_board", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        function changeColor(newColor) { color = newColor; erasing = false; }
+        function erase() { erasing = true; }
+        function clearBoard() { socket.emit("clear_board", { "room": room }); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function toggleContrast() { document.body.classList.toggle("high-contrast"); }
+
+        async function matchPeers() {
+            const topic = document.getElementById("topic").value.trim();
+            if (!topic) return;
+            const res = await fetch("/api/match_peers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ "topic": topic, "subject": room, "user_id": userId })
+            });
+            const data = await res.json();
+            const peerResult = document.getElementById("peer-result");
+            if (data.peers && data.peers.length > 0) {
+                let options = data.peers.map(peer => `<option value="${peer}">${peer}</option>`).join("");
+                peerResult.innerHTML = `<p>${data.message}</p><select id="peer-select">${options}</select><button onclick="invitePeer(document.getElementById('peer-select').value, '${topic}')">Invite</button>`;
+            } else {
+                peerResult.innerHTML = `<p>${data.message}</p>`;
+            }
+        }
+
+        function invitePeer(peerId, topic) {
+            socket.emit("invite_peer", { "room": room, "peer_id": peerId, "user_id": userId, "topic": topic });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLabs Collab - Hackathon Edition</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-text">OLabs</span><span class="logo-highlight">Collab</span>
+        </div>
+        <ul>
+            <li><a href="/" class="nav-link">🏠 Home</a></li>
+            <li><a href="#features" class="nav-link">✨ Features</a></li>
+            <li><a href="/chatbot" class="nav-link">🤖 AI Chatbot</a></li>
+            <li><a href="/lab-advisor" class="nav-link">🧠 Lab Advisor</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>Collaborate. <span>Learn.</span> <br><span class="highlight">Hack Together.</span></h1>
+            <p>Unleash your potential with real-time coding, AI-powered tutoring, and immersive group learning—all built for the ultimate hackathon edge.</p>
+            <button class="cta-btn" onclick="scrollToFeatures()">Explore Now</button>
+        </div>
+        <div class="floating-shapes">
+            <div class="shape shape-coding" data-speed="0.5"></div>
+            <div class="shape shape-teamwork" data-speed="0.7"></div>
+            <div class="shape shape-ai" data-speed="0.3"></div>
+            <div class="shape shape-orbit" data-speed="0.9"></div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <h2>Supercharge Your Learning</h2>
+        <div class="feature-grid">
+            <div class="feature-card" onclick="window.location.href='/collab/physics'">
+                <div class="icon">💬</div>
+                <h3>Classroom Chat</h3>
+                <p>Connect, discuss, and sketch ideas with peers in real time.</p>
+                <button class="feature-btn">Join Physics Room</button>
+            </div>
+            <div class="feature-card" onclick="window.location.href='/code-editor'">
+                <div class="icon">💻</div>
+                <h3>Code Editor</h3>
+                <p>Code, run, and sync with your team instantly.</p>
+                <button class="feature-btn">Open Code Editor</button>
+            </div>
+            <div class="feature-card" onclick="window.location.href='/chatbot'">
+                <div class="icon">🤖</div>
+                <h3>AI Tutor</h3>
+                <p>Get instant, smart help for any project.</p>
+                <button class="feature-btn">Ask AI Now</button>
+            </div>
+            <div class="feature-card" onclick="window.location.href='/gamified'">
+                <div class="icon">🎮</div>
+                <h3>Gamified Quiz</h3>
+                <p>Test your knowledge with fun quizzes and climb the leaderboard.</p>
+                <button class="feature-btn">Start Quiz</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // GSAP Animations
+        gsap.from(".navbar", { y: -100, opacity: 0, duration: 1, ease: "power2.out" });
+        gsap.from(".hero-content h1", { opacity: 0, y: -60, duration: 1.5, ease: "power3.out" });
+        gsap.from(".hero-content p", { opacity: 0, y: 40, duration: 1.5, delay: 0.5, ease: "power3.out" });
+        gsap.from(".cta-btn", { opacity: 0, scale: 0.8, duration: 1, delay: 1, ease: "back.out(1.7)" });
+        gsap.from(".feature-card", { 
+            opacity: 0, 
+            y: 50, 
+            stagger: 0.2, 
+            duration: 1, 
+            scrollTrigger: { trigger: "#features", start: "top 80%" } 
+        });
+
+        // Floating Shapes Animation with Parallax
+        document.querySelectorAll(".shape").forEach(shape => {
+            const speed = shape.getAttribute("data-speed");
+            gsap.to(shape, {
+                y: 20,
+                duration: 2 + speed * 2,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
+            window.addEventListener("mousemove", (e) => {
+                const xMove = (e.clientX - window.innerWidth / 2) * speed * 0.02;
+                const yMove = (e.clientY - window.innerHeight / 2) * speed * 0.02;
+                gsap.to(shape, { x: xMove, y: yMove + 20, duration: 1, ease: "power2.out" });
+            });
+        });
+
+        // Scroll to Features
+        function scrollToFeatures() {
+            document.getElementById("features").scrollIntoView({ behavior: "smooth" });
+        }
+    </script>
+</body>
+</html>

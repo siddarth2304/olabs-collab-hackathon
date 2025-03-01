@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Code Editor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>🖥️ Real-Time Code Editor</h1>
+    <textarea id="code-editor"></textarea>
+    <button onclick="runCode()">Run</button>
+    <script>
+        function runCode() {
+            let code = document.getElementById("code-editor").value;
+            alert("Running:\n" + code);
+        }
+    </script>
+</body>
+</html>

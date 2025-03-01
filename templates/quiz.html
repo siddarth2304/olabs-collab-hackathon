@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLabs Collab - Quiz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">OLabs Collab</div>
+        <ul>
+            <li><a href="/">🏠 Home</a></li>
+            <li><a href="/features">✨ Features</a></li>
+            <li><a href="/chatbot">🤖 AI Chatbot</a></li>
+            <li><a href="/collab">💻 Collaborate</a></li>
+        </ul>
+    </nav>
+
+    <section class="quiz-section">
+        <h2>Test Your Knowledge</h2>
+        <form id="quiz-form">
+            <div class="question">
+                <p>1. What is the purpose of OLabs Collab?</p>
+                <input type="radio" name="q1" value="a" id="q1a"><label for="q1a">A. Real-time collaboration and AI tutoring</label><br>
+                <input type="radio" name="q1" value="b" id="q1b"><label for="q1b">B. Offline learning and no collaboration</label><br>
+                <input type="radio" name="q1" value="c" id="q1c"><label for="q1c">C. A virtual library for resources</label><br>
+            </div>
+
+            <div class="question">
+                <p>2. What feature does OLabs Collab integrate for coding?</p>
+                <input type="radio" name="q2" value="a" id="q2a"><label for="q2a">A. Code sharing and live coding</label><br>
+                <input type="radio" name="q2" value="b" id="q2b"><label for="q2b">B. AI-based music generation</label><br>
+                <input type="radio" name="q2" value="c" id="q2c"><label for="q2c">C. Image recognition for code</label><br>
+            </div>
+
+            <button type="submit" class="cta-button">Submit Answers</button>
+        </form>
+    </section>
+
+    <script>
+        document.getElementById('quiz-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Collect answers
+            let answers = {
+                q1: document.querySelector('input[name="q1"]:checked')?.value,
+                q2: document.querySelector('input[name="q2"]:checked')?.value
+            };
+
+            // Send answers to backend for processing
+            fetch('/api/submit_quiz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(answers)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                window.location.href = '/';
+            });
+        });
+    </script>
+</body>
+</html>

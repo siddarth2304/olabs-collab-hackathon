@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat - OLabs Collab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>💬 OLabs AI Assistant</h1>
+        <div id="chat-box" class="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            let userInput = document.getElementById("user-input");
+            let userMessage = userInput.value.trim();
+            if (userMessage === "") return;
+
+            let chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<div class="message user"><strong>You:</strong> ${userMessage}</div>`;
+
+            userInput.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            fetch("/chatbot", {
+                method: "POST",
+                body: JSON.stringify({ message: userMessage }),
+                headers: { "Content-Type": "application/json" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                let botMessage = `<div class="message bot"><strong>Bot:</strong> ${data.reply}</div>`;
+                chatBox.innerHTML += botMessage;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
+
